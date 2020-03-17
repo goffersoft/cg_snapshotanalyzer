@@ -15,7 +15,24 @@ This project uses boto3 to manage aws ec2 instance snapshots
    (you will need the downloaded credentials)
 5) make sure you give permissions to the user created earlier
    to access ec2 resources
+6) tagging ec2 instances by project is recommended
+       tag -> Project:<project-name>
+   
 ```
 
 ## Running
-pipenv run "python analyser/snapshotanalyzer.py"
+pipenv run "python analyser/snapshotanalyzer.py "
+
+```
+Usage: snapshotanalyzer.py [OPTIONS] COMMAND [ARGS]...
+
+  Commands for Instances
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  list   List EC2 Instances
+  start  Start EC2 Instances
+  stop   Stop EC2 Instances
+```
