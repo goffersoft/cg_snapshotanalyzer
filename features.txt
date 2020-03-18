@@ -1,0 +1,36 @@
+Features TODO List
+-----------------
+
+Easy
+----
+
+
+1) Ability the ability to "reboot" instances
+
+2) Add a "--force" flag to the "instances stop", "start", "snapshot" and "reboot" commands
+   if "--project" isent set exit the command immediately with an error message unless --force is set
+
+3) add a "--profile" option to the cli group which lets you specify a different profile
+
+Medium
+------
+
+1. use a try/except block to catch "botocore.exceptions.ClientError"
+  when creating snapshots, and print an error message
+
+2. Add an "--instance" argument to the appropriate commands, so
+   they only target one instance
+
+3. After a snapshot, only start instances that were running before the
+   snapshot was taken
+
+Hard
+----
+
+1. Add an optional "--age" parameter to the "snapshot" command that 
+   takes an age in days and only snapshots volumes whose last
+   successful snapshot is older than that many days
+
+2. when snapshotting dont stop an instance unles the script will snapshot one of its volumes
+
+3. Add a "--region" parameter to all commands that will let the user override the region set in their AWS CLI configuration profile
