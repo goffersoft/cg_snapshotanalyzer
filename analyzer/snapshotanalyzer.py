@@ -127,9 +127,15 @@ def init(pname, rname):
 
 @click.group()
 def cli():
-   " Snapshot Command Line Interface """
-   
-   return
+    " Snapshot Command Line Interface """
+    
+    global g_aws_session
+    global g_ec2_resource
+
+    (g_aws_session, g_ec2_resource) = \
+             init('goffer-snapshotanalyzer', 'ec2')
+
+    return
 
 @cli.group()
 def instances():
@@ -213,6 +219,4 @@ def stop_instances(project):
     return
 
 if __name__ == "__main__":
-    (g_aws_session, g_ec2_resource) = \
-             init('goffer-snapshotanalyzer', 'ec2')
     cli()
