@@ -48,9 +48,9 @@ def list_ec2_volumes(project):
     
     return
 
-def list_ec2_snapshots(project):
+def list_ec2_snapshots(project, list_all):
     """ List snapshots associated with EC2 instances """
-    
+
     for i in get_instances(g_ec2_resource, project):
         tags = {t['Key']:t['Value'] for t in i.tags or []}
         for v in i.volumes.all():
@@ -63,6 +63,9 @@ def list_ec2_snapshots(project):
                         s.progress,
                         s.start_time.strftime('%c'),
                         'Project='+tags.get('Project', '<no-project>'))))
+                if(s.state == 'completed' and not list_all):
+                    break
+          
 
     return
 
@@ -142,10 +145,12 @@ def snapshots():
 @click.option('--project', default=None,
               help='print all volumes associated with \
                     instances (ec2 only) for project tag:Project:<name>')
-def list_snapshots(project):
+@click.option('--all', 'list_all', default=False, is_flag=True,
+              help='list all snapshots')
+def list_snapshots(project, list_all):
     """ List snapshots associated with all instances (EC2 Only) """
     
-    list_ec2_snapshots(project)
+    list_ec2_snapshots(project, list_all)
 
     return
 
