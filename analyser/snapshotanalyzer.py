@@ -1,5 +1,6 @@
 import boto3
 import click
+import botocore
 
 g_aws_session = None
 g_ec2_resource = None
@@ -69,18 +70,27 @@ def create_ec2_snapshots(project):
     """ create snapshots associated with EC2 instances """
 
     for i in get_instances(g_ec2_resource, project):
+        print('Stopping {0}...'.format(i))
+        i.stop()
+        i.wait_until_stopped()
         for v in i.volumes.all():
             print('creating snapshot...({0}, {1})'.format(i,v))
-            v.create_snapshot('Description=created by \
+            v.create_snapshot(Description='created by \
                               snapshotanalyzer app')
-
+        print('Starting {0}...'.format(i))
+        i.start()
+        i.wait_until_running() 
     return
 
 def start_ec2_instances(project):
     """ Start EC2 instances """
     for i in get_instances(g_ec2_resource, project):
         print('Starting...{0}'.format(i.id))
-        i.start() 
+        try:
+            i.start() 
+        except botocore.exceptions.ClientError as e:
+            print('couldnot start {0} : '.format(i.id) + str(e))
+            continue
     
     return 
 
@@ -88,7 +98,11 @@ def stop_ec2_instances(project):
     """ Stop EC2 instances """
     for i in get_instances(g_ec2_resource, project):
         print('Stopping...{0}'.format(i.id))
-        i.stop() 
+        try:
+            i.stop() 
+        except botocore.exceptions.ClientError as e:
+            print('couldnot stop {0} : '.format(i.id) + str(e))
+            continue
     
     return 
 
