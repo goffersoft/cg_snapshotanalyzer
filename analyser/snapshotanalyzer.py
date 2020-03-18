@@ -20,6 +20,7 @@ def get_instances(resource, project):
 
 def list_ec2_instances(project):
     """ List EC2 instances """
+
     for i in get_instances(g_ec2_resource, project):
         tags = {t['Key']:t['Value'] for t in i.tags or []}
         print(','.join((i.id,
@@ -27,7 +28,52 @@ def list_ec2_instances(project):
                         i.public_dns_name,
                         i.placement['AvailabilityZone'],
                         i.state['Name'],
-                        tags.get('Project', '<no-project>'))))
+                        'Project='+tags.get('Project', '<no-project>'))))
+    return
+
+def list_ec2_volumes(project):
+    """ List volumes associated with EC2 instances """
+
+    for i in get_instances(g_ec2_resource, project):
+        tags = {t['Key']:t['Value'] for t in i.tags or []}
+        for v in i.volumes.all():
+            print(','.join((
+                        v.id,
+                        i.id,
+                        v.state,
+                        str(v.size) + 'GiB',
+                        v.encrypted and 'Encrypted' or 'Not Encrypted',
+                        'Project='+tags.get('Project', '<no-project>'))))
+    
+    return
+
+def list_ec2_snapshots(project):
+    """ List snapshots associated with EC2 instances """
+    
+    for i in get_instances(g_ec2_resource, project):
+        tags = {t['Key']:t['Value'] for t in i.tags or []}
+        for v in i.volumes.all():
+            for s in v.snapshots.all():
+                print(','.join((
+                        s.id,
+                        v.id,
+                        i.id,
+                        s.state,
+                        s.progress,
+                        s.start_time.strftime('%c'),
+                        'Project='+tags.get('Project', '<no-project>'))))
+
+    return
+
+def create_ec2_snapshots(project):
+    """ create snapshots associated with EC2 instances """
+
+    for i in get_instances(g_ec2_resource, project):
+        for v in i.volumes.all():
+            print('creating snapshot...({0}, {1})'.format(i,v))
+            v.create_snapshot('Description=created by \
+                              snapshotanalyzer app')
+
     return
 
 def start_ec2_instances(project):
@@ -55,16 +101,65 @@ def init(pname, rname):
     return (session, resource)
 
 @click.group()
+def cli():
+   " Snapshot Command Line Interface """
+   
+   return
+
+@cli.group()
 def instances():
     """ Commands related to instances """
 
     return
 
+@cli.group()
+def volumes():
+    """ Commands related to volumes"""
+
+    return
+
+@cli.group()
+def snapshots():
+    """ Commands related to snapshots"""
+
+    return
+
+@snapshots.command('list')
+@click.option('--project', default=None,
+              help='print all volumes associated with \
+                    instances (ec2 only) for project tag:Project:<name>')
+def list_snapshots(project):
+    """ List snapshots associated with all instances (EC2 Only) """
+    
+    list_ec2_snapshots(project)
+
+    return
+
+@snapshots.command('create')
+@click.option('--project', default=None,
+              help='create snapshots for all volumes associated with \
+                    instances (ec2 only) for project tag:Project:<name>')
+def create_snapshots(project):
+    """ create snapshots associated with all instances (EC2 Only) """
+
+    create_ec2_snapshots(project)
+
+@volumes.command('list')
+@click.option('--project', default=None,
+              help='print all volumes associated with \
+                    instances (ec2 only) for project tag:Project:<name>')
+def list_volumes(project):
+    """ List volumes associated with all instances (EC2 Only) """
+    
+    list_ec2_volumes(project)
+
+    return
+
 @instances.command('list')
 @click.option('--project', default=None,
-           help='print all ec2 isntances for project tag:Project:<name>')
+     help='print all instances(ec2 only) for project tag:Project:<name>')
 def list_instances(project):
-    """ List instances """
+    """ List instances (EC2 Only) """
 
     list_ec2_instances(project)
 
@@ -72,9 +167,9 @@ def list_instances(project):
 
 @instances.command('start')
 @click.option('--project', default=None,
-             help='start all ec2 isntances for project tag:Project:<name>')
+       help='start all instances(ec2 only) for project tag:Project:<name>')
 def start_instances(project):
-    """ Start instances """
+    """ Start instances (EC2 only) """
     
     start_ec2_instances(project)
 
@@ -82,9 +177,9 @@ def start_instances(project):
 
 @instances.command('stop')
 @click.option('--project', default=None,
-             help='stop all ec2 isntances for project tag:Project:<name>')
+        help='stop all instances(ec2 only) for project tag:Project:<name>')
 def stop_instances(project):
-    """ Stop instances """
+    """ Stop instances (EC2 only) """
 
     stop_ec2_instances(project)
 
@@ -93,4 +188,4 @@ def stop_instances(project):
 if __name__ == "__main__":
     (g_aws_session, g_ec2_resource) = \
              init('goffer-snapshotanalyzer', 'ec2')
-    instances()
+    cli()
