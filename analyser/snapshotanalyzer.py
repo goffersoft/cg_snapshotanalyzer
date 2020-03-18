@@ -69,6 +69,10 @@ def list_ec2_snapshots(project, list_all):
 
     return
 
+def has_pending_snapshots(volume):
+    snapshots = list(volume.snapshots.all()) 
+    return snapshots and snapshots[0] == 'pending'
+
 def create_ec2_snapshots(project):
     """ create snapshots associated with EC2 instances """
 
@@ -77,6 +81,10 @@ def create_ec2_snapshots(project):
         i.stop()
         i.wait_until_stopped()
         for v in i.volumes.all():
+            if has_pending_snapshots(v):
+                print('skipping {0}, snapshot\
+                         already in progress'.format(v.id))
+                break 
             print('creating snapshot...({0}, {1})'.format(i,v))
             v.create_snapshot(Description='created by \
                               snapshotanalyzer app')
