@@ -33,4 +33,4 @@ Hard
 
 2. when snapshotting dont stop an instance unles the script will snapshot one of its volumes - done
 
-3. Add a "--region" parameter to all commands that will let the user override the region set in their AWS CLI configuration profile
+3. Add a "--region" parameter to all commands that will let the user override the region set in their AWS CLI configuration profile - done
