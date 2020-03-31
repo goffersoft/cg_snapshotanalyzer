@@ -107,17 +107,17 @@ def create_ec2_snapshots(project, instances):
 
     for i in get_instances(g_ec2_resource, project, instances):
         stopped = False
-        if is_instance_running(i):
-            if stop_ec2_instance(i, True):
-                stopped = True
-            else:
-                continue
         for v in i.volumes.all():
             if has_pending_snapshots(v):
                 print('skipping {0}, snapshot\
                          already in progress'.format(v.id))
                 continue
             try:
+                if is_instance_running(i):
+                    if stop_ec2_instance(i, True):
+                        stopped = True
+                    else:
+                        continue
                 print('creating snapshot...({0}, {1})'.format(i,v))
                 v.create_snapshot(Description='created by \
                               snapshotanalyzer app')
