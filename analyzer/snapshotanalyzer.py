@@ -5,10 +5,13 @@ import botocore
 g_aws_session = None
 g_ec2_resource = None
 
-def get_session(pname):
+def get_session(pname, rname):
     """ Get boto3 session associated with aws profile name """
 
-    return boto3.Session(profile_name=pname)
+    if rname is None:
+        return boto3.Session(profile_name=pname)
+    else:
+        return boto3.Session(profile_name=pname, region_name=rname)
 
 def get_resource(session, rname):
     """ Get boto3 resource associated with resource name """
@@ -178,28 +181,30 @@ def reboot_ec2_instances(project, instances):
 
     return
 
-def init(pname, rname):
+def init(profile_name, region_name, resource_name):
     """ Initialze boto3 """
 
-    session = get_session(pname)
-    resource = get_resource(session, rname)
+    session = get_session(profile_name, region_name)
+    resource = get_resource(session, resource_name)
 
     return (session, resource)
 
 @click.group()
 @click.option('--profile', default=None,
         help='profile name to use while initializing the boto3 package')
-def cli(profile):
+@click.option('--region', default=None,
+        help='overide the region name in the aws profile')
+def cli(profile, region):
     " Snapshot Command Line Interface """
     
     global g_aws_session
     global g_ec2_resource
 
-    if profile == None: pname='goffer-snapshotanalyzer'
+    if profile is None: pname='goffer-snapshotanalyzer'
     else: pname = profile
 
     (g_aws_session, g_ec2_resource) = \
-             init(pname, 'ec2')
+             init(pname, region, 'ec2')
 
     return
 
@@ -249,7 +254,7 @@ def list_snapshots(project, instance, list_all):
 def create_snapshots(project, instance, force):
     """ Create snapshots associated with all instances (EC2 Only) """
 
-    if not force and project == None:
+    if not force and project is None:
         print('Please Specify Project Name associated with Instances')
         return
 
@@ -293,7 +298,7 @@ def list_instances(project, instance):
 def reboot_instances(project, instance, force):
     """ Reboot instances (EC2 only) """
 
-    if not force and project == None:
+    if not force and project is None:
         print('Please Specify Project Name associated with Instances')
         return
 
@@ -312,7 +317,7 @@ def reboot_instances(project, instance, force):
 def start_instances(project, instance, force):
     """ Start instances (EC2 only) """
 
-    if not force and project == None:
+    if not force and project is None:
         print('Please Specify Project Name associated with Instances')
         return
     
@@ -331,7 +336,7 @@ def start_instances(project, instance, force):
 def stop_instances(project, instance, force):
     """ Stop instances (EC2 only) """
 
-    if not force and project == None:
+    if not force and project is None:
         print('Please Specify Project Name associated with Instances')
         return
 
