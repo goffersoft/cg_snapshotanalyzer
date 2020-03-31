@@ -165,14 +165,19 @@ def init(pname, rname):
     return (session, resource)
 
 @click.group()
-def cli():
+@click.option('--profile', default=None,
+        help='profile name to use while initializing the boto3 package')
+def cli(profile):
     " Snapshot Command Line Interface """
     
     global g_aws_session
     global g_ec2_resource
 
+    if profile == None: pname='goffer-snapshotanalyzer'
+    else: pname = profile
+
     (g_aws_session, g_ec2_resource) = \
-             init('goffer-snapshotanalyzer', 'ec2')
+             init(pname, 'ec2')
 
     return
 
