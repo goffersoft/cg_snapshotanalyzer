@@ -15,21 +15,32 @@ def get_resource(session, rname):
 
     return session.resource(rname)
 
-def get_instances(resource, project):
+def get_instances(resource, project, instances):
     """ Get instances associated with resource.
-        Conditionally filter by project name """
+        Conditionally filter by project name 
+        and/or instanceIds
+    """
 
-    if (project == None):
+    if project is None and instances is None:
         return list(resource.instances.all())
-    
-    filter=[{'Name':'tag:Project', 'Values':[project]}]
+  
+    if project is None and instances is not None:
+        return list(resource.instances.filter(\
+                            InstanceIds=instances.split(',')))
 
-    return list(resource.instances.filter(Filters=filter))
+    if project is not None:
+        filter = {'Name':'tag:Project', 'Values':[project]}
 
-def list_ec2_instances(project):
+    if project is not None and instances is None:
+        return list(resource.instances.filter(Filters=filter))
+
+    return list(resource.instances.filter(Filters=filter,\
+                                      InstanceIds=instances.split(',')))
+
+def list_ec2_instances(project, instances):
     """ List EC2 instances """
 
-    for i in get_instances(g_ec2_resource, project):
+    for i in get_instances(g_ec2_resource, project, instances):
         tags = {t['Key']:t['Value'] for t in i.tags or []}
         print(','.join((i.id,
                         i.instance_type,
@@ -39,10 +50,10 @@ def list_ec2_instances(project):
                         'Project='+tags.get('Project', '<no-project>'))))
     return
 
-def list_ec2_volumes(project):
+def list_ec2_volumes(project, instances):
     """ List volumes associated with EC2 instances """
 
-    for i in get_instances(g_ec2_resource, project):
+    for i in get_instances(g_ec2_resource, project, instances):
         tags = {t['Key']:t['Value'] for t in i.tags or []}
         for v in i.volumes.all():
             print(','.join((
@@ -55,10 +66,10 @@ def list_ec2_volumes(project):
     
     return
 
-def list_ec2_snapshots(project, list_all):
+def list_ec2_snapshots(project, instances, list_all):
     """ List snapshots associated with EC2 instances """
 
-    for i in get_instances(g_ec2_resource, project):
+    for i in get_instances(g_ec2_resource, project, instances):
         tags = {t['Key']:t['Value'] for t in i.tags or []}
         for v in i.volumes.all():
             for s in v.snapshots.all():
@@ -91,10 +102,10 @@ def has_pending_snapshots(volume):
     snapshots = list(volume.snapshots.all()) 
     return snapshots and snapshots[0] == 'pending'
 
-def create_ec2_snapshots(project):
+def create_ec2_snapshots(project, instances):
     """ create snapshots associated with EC2 instances """
 
-    for i in get_instances(g_ec2_resource, project):
+    for i in get_instances(g_ec2_resource, project, instances):
         stopped = False
         if is_instance_running(i):
             if stop_ec2_instance(i, True):
@@ -142,26 +153,26 @@ def start_ec2_instance(instance, wait):
         print('couldnot start {0} : '.format(instance.id) + str(e))
         return False
 
-def start_ec2_instances(project):
+def start_ec2_instances(project, instances):
     """ Start EC2 instances """
 
-    for i in get_instances(g_ec2_resource, project):
+    for i in get_instances(g_ec2_resource, project, instances):
         start_ec2_instance(i, False) 
     
     return 
 
-def stop_ec2_instances(project):
+def stop_ec2_instances(project, instances):
     """ Stop EC2 instances """
 
-    for i in get_instances(g_ec2_resource, project):
+    for i in get_instances(g_ec2_resource, project, instances):
         stop_ec2_instance(i, False)
 
     return
 
-def reboot_ec2_instances(project):
+def reboot_ec2_instances(project, instances):
     """ Reboot EC2 Instances """
 
-    for i in get_instances(g_ec2_resource, project): 
+    for i in get_instances(g_ec2_resource, project, instances): 
         if not stop_ec2_instance(i, True): continue
         start_ec2_instance(i, False)
 
@@ -214,12 +225,15 @@ def snapshots():
 @click.option('--project', default=None,
               help='print all volumes associated with \
                     instances (ec2 only) for project tag:Project:<name>')
+@click.option('--instance', default=None,
+                help='stop the selected instances(ec2 only) \
+                      for project tag:Project:<name>')
 @click.option('--all', 'list_all', default=False, is_flag=True,
               help='list all snapshots')
-def list_snapshots(project, list_all):
+def list_snapshots(project, instance, list_all):
     """ List snapshots associated with all instances (EC2 Only) """
     
-    list_ec2_snapshots(project, list_all)
+    list_ec2_snapshots(project, instance, list_all)
 
     return
 
@@ -227,83 +241,101 @@ def list_snapshots(project, list_all):
 @click.option('--project', default=None,
               help='create snapshots for all volumes associated with \
                     instances (ec2 only) for project tag:Project:<name>')
+@click.option('--instance', default=None,
+                help='stop the selected instances(ec2 only) \
+                      for project tag:Project:<name>')
 @click.option('--force', is_flag=True,
         help='create snapshots associated with all ec2 instances')
-def create_snapshots(project, force):
+def create_snapshots(project, instance, force):
     """ Create snapshots associated with all instances (EC2 Only) """
 
     if not force and project == None:
         print('Please Specify Project Name associated with Instances')
         return
 
-    create_ec2_snapshots(project)
+    create_ec2_snapshots(project, instance)
 
 @volumes.command('list')
 @click.option('--project', default=None,
               help='print all volumes associated with \
                     instances (ec2 only) for project tag:Project:<name>')
-def list_volumes(project):
+@click.option('--instance', default=None,
+                help='stop the selected instances(ec2 only) \
+                      for project tag:Project:<name>')
+def list_volumes(project, instance):
     """ List volumes associated with all instances (EC2 Only) """
     
-    list_ec2_volumes(project)
+    list_ec2_volumes(project, instance)
 
     return
 
 @instances.command('list')
 @click.option('--project', default=None,
      help='print all instances(ec2 only) for project tag:Project:<name>')
-def list_instances(project):
+@click.option('--instance', default=None,
+                help='stop the selected instances(ec2 only) \
+                      for project tag:Project:<name>')
+def list_instances(project, instance):
     """ List instances (EC2 Only) """
 
-    list_ec2_instances(project)
+    list_ec2_instances(project, instance)
 
     return
 
 @instances.command('reboot')
 @click.option('--project', default=None,
        help='start all instances(ec2 only) for project tag:Project:<name>')
+@click.option('--instance', default=None,
+                help='stop the selected instances(ec2 only) \
+                      for project tag:Project:<name>')
 @click.option('--force', is_flag=True,
         help='reboot all ec2 instances for all projects')
-def reboot_instances(project, force):
+def reboot_instances(project, instance, force):
     """ Reboot instances (EC2 only) """
 
     if not force and project == None:
         print('Please Specify Project Name associated with Instances')
         return
 
-    reboot_ec2_instances(project)
+    reboot_ec2_instances(project, instance)
 
     return
 
 @instances.command('start')
 @click.option('--project', default=None,
        help='start all instances(ec2 only) for project tag:Project:<name>')
+@click.option('--instance', default=None,
+                help='stop the selected instances(ec2 only) \
+                      for project tag:Project:<name>')
 @click.option('--force', is_flag=True,
         help='start all ec2 instances for all projects')
-def start_instances(project, force):
+def start_instances(project, instance, force):
     """ Start instances (EC2 only) """
 
     if not force and project == None:
         print('Please Specify Project Name associated with Instances')
         return
     
-    start_ec2_instances(project)
+    start_ec2_instances(project, instance)
 
     return
 
 @instances.command('stop')
 @click.option('--project', default=None,
         help='stop all instances(ec2 only) for project tag:Project:<name>')
+@click.option('--instance', default=None,
+                help='stop the selected instances(ec2 only) \
+                      for project tag:Project:<name>')
 @click.option('--force', is_flag=True,
         help='stop all ec2 instances for all projects')
-def stop_instances(project, force):
+def stop_instances(project, instance, force):
     """ Stop instances (EC2 only) """
 
     if not force and project == None:
         print('Please Specify Project Name associated with Instances')
         return
 
-    stop_ec2_instances(project)
+    stop_ec2_instances(project, instance)
 
     return
 
