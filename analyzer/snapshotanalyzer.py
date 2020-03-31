@@ -6,12 +6,19 @@ g_aws_session = None
 g_ec2_resource = None
 
 def get_session(pname):
+    """ Get boto3 session associated with aws profile name """
+
     return boto3.Session(profile_name=pname)
 
 def get_resource(session, rname):
+    """ Get boto3 resource associated with resource name """
+
     return session.resource(rname)
 
 def get_instances(resource, project):
+    """ Get instances associated with resource.
+        Conditionally filter by project name """
+
     if (project == None):
         return list(resource.instances.all())
     
@@ -70,6 +77,9 @@ def list_ec2_snapshots(project, list_all):
     return
 
 def has_pending_snapshots(volume):
+    """ Utility function to check if there """
+        are any pending snapshots for this instance """
+
     snapshots = list(volume.snapshots.all()) 
     return snapshots and snapshots[0] == 'pending'
 
@@ -78,8 +88,7 @@ def create_ec2_snapshots(project):
 
     for i in get_instances(g_ec2_resource, project):
         print('Stopping {0}...'.format(i))
-        i.stop()
-        i.wait_until_stopped()
+        stop_ec2_instance(i, True)
         for v in i.volumes.all():
             if has_pending_snapshots(v):
                 print('skipping {0}, snapshot\
@@ -89,16 +98,28 @@ def create_ec2_snapshots(project):
             v.create_snapshot(Description='created by \
                               snapshotanalyzer app')
         print('Starting {0}...'.format(i))
-        i.start()
-        i.wait_until_running() 
+        start_ec2_instance(i, True)
     return
+
+def stop_ec2_instance(instance, wait):
+    """ Stop ec2 instance """
+
+    instance.stop()
+    if wait: instance.wait_until_stopped() 
+
+def start_ec2_instance(instance, wait):
+    """ Start ec2 instance """
+
+    instance.start()
+    if wait: instance.wait_until_running() 
 
 def start_ec2_instances(project):
     """ Start EC2 instances """
+
     for i in get_instances(g_ec2_resource, project):
         print('Starting...{0}'.format(i.id))
         try:
-            i.start() 
+            start_instance(i, False) 
         except botocore.exceptions.ClientError as e:
             print('couldnot start {0} : '.format(i.id) + str(e))
             continue
@@ -107,18 +128,36 @@ def start_ec2_instances(project):
 
 def stop_ec2_instances(project):
     """ Stop EC2 instances """
+
     for i in get_instances(g_ec2_resource, project):
         print('Stopping...{0}'.format(i.id))
         try:
-            i.stop() 
+            stop_ec2_instance(i, False)
         except botocore.exceptions.ClientError as e:
             print('couldnot stop {0} : '.format(i.id) + str(e))
             continue
     
-    return 
+    return
+
+def reboot_ec2_instances(project):
+    """ Reboot EC2 Instances """
+
+    for i in get_instances(g_ec2_resource, project): 
+        try:
+            print('Stopping...{0}'.format(i.id))
+            stop_ec2_instance(i, True)
+        except:
+            print('couldnot stop {0} : '.format(i.id) + str(e))
+            continue
+        try:
+            print('Starting...{0}'.format(i.id))
+            start_ec2_instance(i, False)
+        except:
+            print('couldnot start {0} : '.format(i.id) + str(e))
+            continue
 
 def init(pname, rname):
-    """ initialze boto3 """
+    """ Initialze boto3 """
 
     session = get_session(pname)
     resource = get_resource(session, rname)
@@ -173,7 +212,7 @@ def list_snapshots(project, list_all):
               help='create snapshots for all volumes associated with \
                     instances (ec2 only) for project tag:Project:<name>')
 def create_snapshots(project):
-    """ create snapshots associated with all instances (EC2 Only) """
+    """ Create snapshots associated with all instances (EC2 Only) """
 
     create_ec2_snapshots(project)
 
@@ -195,6 +234,16 @@ def list_instances(project):
     """ List instances (EC2 Only) """
 
     list_ec2_instances(project)
+
+    return
+
+@instances.command('reboot')
+@click.option('--project', default=None,
+       help='start all instances(ec2 only) for project tag:Project:<name>')
+def reboot_instances(project):
+    """ Reboot instances (EC2 only) """
+    
+    reboot_ec2_instances(project)
 
     return
 
