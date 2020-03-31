@@ -76,6 +76,14 @@ def list_ec2_snapshots(project, list_all):
 
     return
 
+def is_instance_running(instance):
+    """ Determine if the instnace is running or not """
+
+    if instance.state['Name'] == 'running': return True
+
+    return False
+    
+
 def has_pending_snapshots(volume):
     """ Utility function to check if there
         are any pending snapshots for this instance """
@@ -87,42 +95,58 @@ def create_ec2_snapshots(project):
     """ create snapshots associated with EC2 instances """
 
     for i in get_instances(g_ec2_resource, project):
-        print('Stopping {0}...'.format(i))
-        stop_ec2_instance(i, True)
+        stopped = False
+        if is_instance_running(i):
+            if stop_ec2_instance(i, True):
+                stopped = True
+            else:
+                continue
         for v in i.volumes.all():
             if has_pending_snapshots(v):
                 print('skipping {0}, snapshot\
                          already in progress'.format(v.id))
-                break 
-            print('creating snapshot...({0}, {1})'.format(i,v))
-            v.create_snapshot(Description='created by \
+                continue
+            try:
+                print('creating snapshot...({0}, {1})'.format(i,v))
+                v.create_snapshot(Description='created by \
                               snapshotanalyzer app')
-        print('Starting {0}...'.format(i))
-        start_ec2_instance(i, True)
+            except botocore.exceptions.ClientError as e:
+                print('Could Not Create Snapshot for {0}-{1} : {2}'\
+                          .format(i,v,e))
+        if stopped:
+            start_ec2_instance(i, True)
+
     return
 
 def stop_ec2_instance(instance, wait):
     """ Stop ec2 instance """
 
-    instance.stop()
-    if wait: instance.wait_until_stopped() 
+    try:
+        print('Stopping {0}...'.format(instance.id))
+        instance.stop()
+        if wait: instance.wait_until_stopped()
+        return True
+    except e:
+        print('couldnot stop {0} : '.format(instance.id) + str(e))
+        return False 
 
 def start_ec2_instance(instance, wait):
     """ Start ec2 instance """
 
-    instance.start()
-    if wait: instance.wait_until_running() 
+    try:
+        print('Starting {0}...'.format(instance.id))
+        instance.start()
+        if wait: instance.wait_until_running()
+        return True
+    except e:
+        print('couldnot start {0} : '.format(instance.id) + str(e))
+        return False
 
 def start_ec2_instances(project):
     """ Start EC2 instances """
 
     for i in get_instances(g_ec2_resource, project):
-        print('Starting...{0}'.format(i.id))
-        try:
-            start_instance(i, False) 
-        except botocore.exceptions.ClientError as e:
-            print('couldnot start {0} : '.format(i.id) + str(e))
-            continue
+        start_ec2_instance(i, False) 
     
     return 
 
@@ -130,31 +154,18 @@ def stop_ec2_instances(project):
     """ Stop EC2 instances """
 
     for i in get_instances(g_ec2_resource, project):
-        print('Stopping...{0}'.format(i.id))
-        try:
-            stop_ec2_instance(i, False)
-        except botocore.exceptions.ClientError as e:
-            print('couldnot stop {0} : '.format(i.id) + str(e))
-            continue
-    
+        stop_ec2_instance(i, False)
+
     return
 
 def reboot_ec2_instances(project):
     """ Reboot EC2 Instances """
 
     for i in get_instances(g_ec2_resource, project): 
-        try:
-            print('Stopping...{0}'.format(i.id))
-            stop_ec2_instance(i, True)
-        except:
-            print('couldnot stop {0} : '.format(i.id) + str(e))
-            continue
-        try:
-            print('Starting...{0}'.format(i.id))
-            start_ec2_instance(i, False)
-        except:
-            print('couldnot start {0} : '.format(i.id) + str(e))
-            continue
+        if not stop_ec2_instance(i, True): continue
+        start_ec2_instance(i, False)
+
+    return
 
 def init(pname, rname):
     """ Initialze boto3 """
