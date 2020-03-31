@@ -5,7 +5,7 @@ Easy
 ----
 
 
-q) Ability the ability to "reboot" instances - done
+1) Ability the ability to "reboot" instances - done
 
 2) Add a "--force" flag to the "instances stop", "start", "snapshot" and "reboot" commands
    if "--project" isent set exit the command immediately with an error message unless --force is set - done
