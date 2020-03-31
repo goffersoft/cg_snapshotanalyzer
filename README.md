@@ -26,13 +26,17 @@ pipenv run "python analyser/snapshotanalyzer.py "
 ```
 Usage: snapshotanalyzer.py [OPTIONS] COMMAND [ARGS]...
 
-  Commands for Instances
+  Snapshot Command Line Interface
 
 Options:
-  --help  Show this message and exit.
+  --profile TEXT  profile name to use while initializing the boto3
+                  package
+
+  --region TEXT   overide the region name in the aws profile
+  --help          Show this message and exit.
 
 Commands:
-  list   List EC2 Instances
-  start  Start EC2 Instances
-  stop   Stop EC2 Instances
+  instances  Commands related to instances
+  snapshots  Commands related to snapshots
+  volumes    Commands related to volumes
 ```
