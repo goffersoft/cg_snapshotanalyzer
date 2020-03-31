@@ -77,7 +77,7 @@ def list_ec2_snapshots(project, list_all):
     return
 
 def has_pending_snapshots(volume):
-    """ Utility function to check if there """
+    """ Utility function to check if there
         are any pending snapshots for this instance """
 
     snapshots = list(volume.snapshots.all()) 
@@ -211,8 +211,14 @@ def list_snapshots(project, list_all):
 @click.option('--project', default=None,
               help='create snapshots for all volumes associated with \
                     instances (ec2 only) for project tag:Project:<name>')
-def create_snapshots(project):
+@click.option('--force', is_flag=True,
+        help='create snapshots associated with all ec2 instances')
+def create_snapshots(project, force):
     """ Create snapshots associated with all instances (EC2 Only) """
+
+    if not force and project == None:
+        print('Please Specify Project Name associated with Instances')
+        return
 
     create_ec2_snapshots(project)
 
@@ -240,9 +246,15 @@ def list_instances(project):
 @instances.command('reboot')
 @click.option('--project', default=None,
        help='start all instances(ec2 only) for project tag:Project:<name>')
-def reboot_instances(project):
+@click.option('--force', is_flag=True,
+        help='reboot all ec2 instances for all projects')
+def reboot_instances(project, force):
     """ Reboot instances (EC2 only) """
-    
+
+    if not force and project == None:
+        print('Please Specify Project Name associated with Instances')
+        return
+
     reboot_ec2_instances(project)
 
     return
@@ -250,8 +262,14 @@ def reboot_instances(project):
 @instances.command('start')
 @click.option('--project', default=None,
        help='start all instances(ec2 only) for project tag:Project:<name>')
-def start_instances(project):
+@click.option('--force', is_flag=True,
+        help='start all ec2 instances for all projects')
+def start_instances(project, force):
     """ Start instances (EC2 only) """
+
+    if not force and project == None:
+        print('Please Specify Project Name associated with Instances')
+        return
     
     start_ec2_instances(project)
 
@@ -260,8 +278,14 @@ def start_instances(project):
 @instances.command('stop')
 @click.option('--project', default=None,
         help='stop all instances(ec2 only) for project tag:Project:<name>')
-def stop_instances(project):
+@click.option('--force', is_flag=True,
+        help='stop all ec2 instances for all projects')
+def stop_instances(project, force):
     """ Stop instances (EC2 only) """
+
+    if not force and project == None:
+        print('Please Specify Project Name associated with Instances')
+        return
 
     stop_ec2_instances(project)
 
