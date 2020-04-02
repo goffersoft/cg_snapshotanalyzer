@@ -29,7 +29,7 @@ Hard
 
 1. Add an optional "--age" parameter to the "snapshot" command that 
    takes an age in days and only snapshots volumes whose last
-   successful snapshot is older than that many days
+   successful snapshot is older than that many days - done
 
 2. when snapshotting dont stop an instance unles the script will snapshot one of its volumes - done
 

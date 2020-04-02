@@ -1,6 +1,7 @@
 import boto3
 import click
 import botocore
+import datetime
 
 g_aws_session = None
 g_ec2_resource = None
@@ -105,7 +106,39 @@ def has_pending_snapshots(volume):
     snapshots = list(volume.snapshots.all()) 
     return snapshots and snapshots[0] == 'pending'
 
-def create_ec2_snapshots(project, instances):
+def get_snapshot(volume):
+    """ Get latest snapshot associated with EC2 instance volume """
+
+    if volume is None:
+        return None
+
+    for s in volume.snapshots.all():
+        if(s.state == 'completed'):
+            return s
+ 
+    return None
+
+def can_create_snapshot(volume, age):
+    """ determines if a snapshot can be created
+        checks to see if number of days since snapshot
+        was created is > age
+    """
+
+    if age is None: return True
+
+    snapshot = get_snapshot(volume)
+
+    if snapshot is None: return True
+
+    created_time = snapshot.start_time.now()
+    current_time = datetime.datetime.now()
+    diff = current_time - created_time
+
+    if diff.days > age: return True
+   
+    return False
+
+def create_ec2_snapshots(project, instances, age):
     """ create snapshots associated with EC2 instances """
 
     for i in get_instances(g_ec2_resource, project, instances):
@@ -116,6 +149,12 @@ def create_ec2_snapshots(project, instances):
                          already in progress'.format(v.id))
                 continue
             try:
+                if not can_create_snapshot(v, age):
+                    print('skipping snapshot creation for {0}-{1}'
+                          '...snapshot already created in < than'
+                           ' {2} days'.format(i, v, age))
+                    continue
+
                 if is_instance_running(i):
                     if stop_ec2_instance(i, True):
                         stopped = True
@@ -249,16 +288,18 @@ def list_snapshots(project, instance, list_all):
 @click.option('--instance', default=None,
                 help='stop the selected instances(ec2 only) \
                       for project tag:Project:<name>')
+@click.option('--age', default=None, type=int,
+                help='age value to determine if snapshot can be created')
 @click.option('--force', is_flag=True,
         help='create snapshots associated with all ec2 instances')
-def create_snapshots(project, instance, force):
+def create_snapshots(project, instance, age, force):
     """ Create snapshots associated with all instances (EC2 Only) """
 
     if not force and project is None:
         print('Please Specify Project Name associated with Instances')
         return
 
-    create_ec2_snapshots(project, instance)
+    create_ec2_snapshots(project, instance, age)
 
 @volumes.command('list')
 @click.option('--project', default=None,
