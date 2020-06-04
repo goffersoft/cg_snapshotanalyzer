@@ -1,6 +1,9 @@
 # snapshotanlyzer
 project to manage volume snapshots of EC2 instances 
-
+```
+This repository has been deprecated
+all of this funtionality has been moved to -> https://github.com/goffersoft/automating-aws-with-python 
+```
 ## About
 
 This project uses boto3 to manage aws ec2 instance snapshots
